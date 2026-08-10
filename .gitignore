@@ -1,3 +1,11 @@
+```
+# Dependencies
 node_modules/
-.env
+
+# Logs and temp files
 *.log
+
+# Environment
+.env
+*.env.*
+```
