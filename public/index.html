@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitLab 用户管理工具</title>
+    <style>
+        :root {
+            /* 浅蓝色系主色调 */
+            --primary: #0ea5e9;
+            --primary-hover: #0284c7;
+            --primary-light: #e0f2fe;
+            --primary-border: #bae6fd;
+            
+            --success: #10b981;
+            --success-hover: #059669;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --secondary: #64748b;
+            --secondary-hover: #475569;
+            
+            /* 背景与文本 */
+            --bg-body: #f0f9ff;
+            --bg-surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            
+            /* 圆角与阴影 */
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+            --shadow-lg: 0 10px 15px -3px rgb(14 165 233 / 0.05), 0 4px 6px -4px rgb(14 165 233 / 0.05);
+        }
+
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            background-color: var(--bg-body);
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 40px 20px; 
+            min-height: 100vh;
+        }
+        
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: var(--bg-surface);
+            padding: 40px; 
+            border-radius: var(--radius-lg); 
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        
+        h1 { 
+            text-align: center; 
+            color: var(--text-main);
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.025em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-bottom: 32px;
+        }
+        
+        /* 导航栏 */
+        .nav { 
+            display: flex; 
+            margin-bottom: 30px; 
+            background: #f8fafc;
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .nav a { 
+            flex: 1;
+            text-align: center;
+            padding: 12px 24px; 
+            text-decoration: none; 
+            color: var(--text-muted);
+            border-radius: var(--radius-md); 
+            font-weight: 500;
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        
+        .nav a:hover { 
+            color: var(--text-main);
+            background: var(--bg-surface);
+        }
+        
+        .nav a.active { 
+            background: var(--bg-surface);
+            color: var(--primary) !important; 
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* 标签页 */
+        .tabs { 
+            display: inline-flex; 
+            margin-bottom: 24px; 
+            background: #f8fafc;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .tab { 
+            padding: 10px 24px; 
+            text-align: center; 
+            cursor: pointer; 
+            color: var(--text-muted);
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .tab:hover { color: var(--text-main); }
+        .tab.active { background: var(--primary); color: white; font-weight: 600; box-shadow: var(--shadow-sm); }
+        
+        .content { display: none; animation: fadeIn 0.3s ease; }
+        .content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 搜索和筛选 */
+        .filter-bar {
+            display: flex; gap: 12px; margin-bottom: 24px; background: #f8fafc;
+            padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);
+        }
+        
+        .filter-bar input, .filter-bar select {
+            padding: 10px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+            font-size: 14px; transition: all 0.2s ease; background: white; color: var(--text-main);
+        }
+        
+        .filter-bar input:focus, .filter-bar select:focus {
+            outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+        
+        .filter-bar input { flex: 2; min-width: 200px; }
+        .filter-bar select { flex: 1; min-width: 150px; cursor: pointer; }
+        
+        /* 表单样式 */
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; color: var(--text-main); }
+        
+        input[type="text"], input[type="email"], select { 
+            width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+            font-size: 15px; transition: all 0.2s ease; background: white; color: var(--text-main);
+        }
+        input[type="text"]:focus, input[type="email"]:focus, select:focus { 
+            outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+        
+        /* 按钮样式 */
+        button { 
+            display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; 
+            background: var(--success); color: white; border: none; border-radius: var(--radius-sm); 
+            cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease; box-shadow: var(--shadow-sm);
+        }
+        button:hover { background: var(--success-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        button:active { transform: translateY(0); }
+        
+        button.danger { background: var(--danger); }
+        button.danger:hover { background: var(--danger-hover); }
+        button.primary { background: var(--primary); }
+        button.primary:hover { background: var(--primary-hover); }
+        button.secondary { background: var(--secondary); color: white; }
+        button.secondary:hover { background: var(--secondary-hover); }
+        button.sm { padding: 6px 12px; font-size: 13px; border-radius: 4px; }
+        
+        button:disabled { background: var(--border-color); color: var(--text-muted); box-shadow: none; cursor: not-allowed; transform: none; }
+
+        /* ========= 终极修复：表格布局 ========= */
+        .table-wrapper {
+            width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: white;
+            overflow: hidden; /* 防止圆角漏出 */
+        }
+
+        table { 
+            width: 100%; 
+            table-layout: fixed; /* 核心：强制固定宽度，禁止内容撑破表格 */
+            border-collapse: collapse;
+        }
+        
+        th, td { 
+            padding: 14px 12px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border-color); 
+            vertical-align: middle;
+            word-wrap: break-word; /* 允许单词内部换行 */
+            overflow-wrap: break-word;
+        }
+        
+        th { 
+            background: #f8fafc;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* 针对操作列强制靠右 */
+        th:last-child, td:last-child { text-align: right; }
+        
+        tr:last-child td { border-bottom: none; }
+        tr { transition: background 0.2s; background: white; }
+        tr:hover { background: var(--bg-body); }
+        
+        /* 文本截断：对于名字太长的显示省略号 */
+        .truncate-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        /* 邮箱强制换行，防撑破 */
+        .email-text {
+            color: var(--text-muted);
+            word-break: break-all;
+            font-size: 13px;
+        }
+
+        /* 状态标签 */
+        .state-active { 
+            color: #047857; background: #d1fae5; padding: 4px 10px; border-radius: 9999px;
+            font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; white-space: nowrap;
+        }
+        .state-active::before { content: ''; width: 6px; height: 6px; background: #10b981; border-radius: 50%; margin-right: 6px; }
+        
+        .state-blocked { 
+            color: #b91c1c; background: #fee2e2; padding: 4px 10px; border-radius: 9999px;
+            font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; white-space: nowrap;
+        }
+        .state-blocked::before { content: ''; width: 6px; height: 6px; background: #ef4444; border-radius: 50%; margin-right: 6px; }
+
+        /* 分页 */
+        .pagination { margin-top: 24px; display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .pagination span { 
+            color: var(--text-muted); font-size: 14px; font-weight: 500; background: #f8fafc;
+            padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);
+        }
+
+        #result { margin-top: 24px; padding: 16px 20px; border-radius: var(--radius-sm); display: none; font-weight: 500; font-size: 14px; }
+        .success { background: #ecfdf5; color: #065f46; border: 1px solid #10b981; }
+        .error { background: #fef2f2; color: #991b1b; border: 1px solid #ef4444; }
+        
+        #debugInfo { display: none; }
+        
+        /* 响应式：在极小屏幕下，稍微调整字体以防拥挤 */
+        @media (max-width: 768px) {
+            body { padding: 16px 8px; }
+            .container { padding: 20px 12px; border-radius: 12px; }
+            .filter-bar { flex-direction: column; }
+            th, td { padding: 10px 8px; font-size: 13px; }
+            button.sm { padding: 6px 10px; font-size: 12px; }
+            .state-active, .state-blocked { padding: 2px 6px; font-size: 11px; }
+            .state-active::before, .state-blocked::before { display: none; } /* 极小屏隐藏状态圆点节约空间 */
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>GitLab 用户管理</h1>
+    <p class="subtitle">管理您的 GitLab 用户账户，支持创建、启用和禁用等操作</p>
+    
+    <div class="nav">
+        <a href="index.html" class="active">👥 用户管理</a>
+        <a href="projects.html">🛡️ 项目权限</a>
+        <a href="expiring.html">⏰ 即将过期</a>
+        <a href="permanent.html">♾️ 长期权限</a>
+    </div>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('list')">用户列表</div>
+        <div class="tab" onclick="showTab('create')">新增用户</div>
+    </div>
+
+    <div id="list" class="content active">
+        
+        <div class="filter-bar">
+            <input type="text" id="searchInput" placeholder="搜索用户名、姓名或邮箱..." onkeypress="if(event.key==='Enter') doSearch()">
+            <select id="stateFilter" onchange="doSearch()">
+                <option value="">所有状态</option>
+                <option value="active">已启用 (Active)</option>
+                <option value="blocked">已禁用 (Blocked)</option>
+            </select>
+            <button onclick="doSearch()" class="primary">搜索</button>
+            <button onclick="resetSearch()" class="secondary">重置</button>
+        </div>
+        
+        <div class="table-wrapper">
+            <table id="userTable">
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">ID</th>
+                        <th style="width: 18%;">用户名</th>
+                        <th style="width: 18%;">姓名</th>
+                        <th style="width: 27%;">邮箱</th>
+                        <th style="width: 14%;">状态</th>
+                        <th style="width: 15%;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="loading-row"><td colspan="6" style="text-align:center; padding: 40px;">拼命加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <button id="prevBtn" class="secondary" onclick="changePage(-1)" disabled>上一页</button>
+            <span id="pageInfo">第 1 页</span>
+            <button id="nextBtn" class="secondary" onclick="changePage(1)" disabled>下一页</button>
+        </div>
+    </div>
+
+    <div id="create" class="content">
+        <form id="createForm">
+            <div class="form-group">
+                <label>用户名 (Username)</label>
+                <input type="text" id="c_username" placeholder="如: johndoe" required>
+            </div>
+            <div class="form-group">
+                <label>全名 (Full Name)</label>
+                <input type="text" id="c_name" placeholder="如: John Doe" required>
+            </div>
+            <div class="form-group">
+                <label>邮箱 (Email)</label>
+                <input type="email" id="c_email" placeholder="如: john@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>密码选项</label>
+                <select id="c_password_opt">
+                    <option value="true">安全生成随机密码</option>
+                    <option value="false">使用默认密码</option>
+                </select>
+            </div>
+            <button type="submit" class="primary" style="width: 100%; padding: 14px; font-size: 16px;">创建用户</button>
+        </form>
+    </div>
+
+    <div id="result"></div>
+    <div id="debugInfo"></div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentSearch = '';
+    let currentState = '';
+
+    loadUsers(1);
+
+    function doSearch() {
+        currentSearch = document.getElementById('searchInput').value.trim();
+        currentState = document.getElementById('stateFilter').value;
+        loadUsers(1);
+    }
+
+    function resetSearch() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('stateFilter').value = '';
+        currentSearch = '';
+        currentState = '';
+        loadUsers(1);
+    }
+
+    function showTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+        document.getElementById('result').style.display = 'none';
+
+        if (tabId === 'list') { loadUsers(currentPage); }
+    }
+
+    function showResult(type, message) {
+        const resultDiv = document.getElementById('result');
+        resultDiv.className = type; 
+        resultDiv.innerHTML = message;
+        resultDiv.style.display = 'block';
+        if (type === 'success') { setTimeout(() => { resultDiv.style.display = 'none'; }, 5000); }
+    }
+
+    async function apiCall(endpoint, data, method = 'POST') {
+        try {
+            const options = { method: method, headers: { 'Content-Type': 'application/json' } };
+            if (data) options.body = JSON.stringify(data);
+            const response = await fetch(endpoint, options);
+            const result = await response.json();
+            if (response.ok) { return { success: true, data: result }; } 
+            else { return { success: false, error: result.error || '未知错误' }; }
+        } catch (e) { return { success: false, error: e.message }; }
+    }
+
+    async function loadUsers(page) {
+        const tbody = document.querySelector('#userTable tbody');
+        tbody.innerHTML = '<tr class="loading-row"><td colspan="6" style="text-align:center; padding: 40px;">加载中...</td></tr>';
+        
+        let url = `/api/users?page=${page}&per_page=10`;
+        if (currentSearch) url += `&search=${encodeURIComponent(currentSearch)}`;
+        if (currentState) url += `&state=${currentState}`;
+
+        const res = await apiCall(url, null, 'GET');
+        
+        if (res.success) {
+            currentPage = res.data.page;
+            totalPages = res.data.total_pages;
+            updatePagination();
+            renderTable(res.data.users);
+        } else {
+            tbody.innerHTML = `<tr class="error-row"><td colspan="6" style="text-align:center; padding: 40px;">加载失败: ${res.error}</td></tr>`;
+        }
+    }
+
+    function renderTable(users) {
+        const tbody = document.querySelector('#userTable tbody');
+        tbody.innerHTML = '';
+
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6" style="text-align:center; padding: 40px;">暂无用户</td></tr>';
+            return;
+        }
+
+        users.forEach(user => {
+            const stateClass = user.state === 'active' ? 'state-active' : 'state-blocked';
+            const stateText = user.state === 'active' ? '正常' : (user.state === 'blocked' ? '已禁用' : user.state);
+            
+            let actionBtn = '';
+            if (user.state === 'active') {
+                actionBtn = `<button class="danger sm" onclick="toggleUser('${user.username}', 'disable')">禁用</button>`;
+            } else {
+                actionBtn = `<button class="primary sm" onclick="toggleUser('${user.username}', 'enable')">启用</button>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.id}</td>
+                <td title="${user.username}"><strong class="truncate-text">${user.username}</strong></td>
+                <td title="${user.name}"><span class="truncate-text">${user.name}</span></td>
+                <td><div class="email-text">${user.email}</div></td>
+                <td><span class="${stateClass}">${stateText}</span></td>
+                <td>${actionBtn}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updatePagination() {
+        document.getElementById('pageInfo').innerText = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+        document.getElementById('prevBtn').disabled = currentPage <= 1;
+        document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    }
+
+    function changePage(delta) {
+        const newPage = currentPage + delta;
+        if (newPage >= 1 && newPage <= totalPages) { loadUsers(newPage); }
+    }
+
+    async function toggleUser(username, action) {
+        if (action === 'disable' && !confirm(`确定要禁用用户 ${username} 吗?`)) return;
+
+        const endpoint = action === 'enable' ? '/api/enable' : '/api/disable';
+        const res = await apiCall(endpoint, { username });
+        
+        if (res.success) {
+            showResult('success', res.data.message);
+            loadUsers(currentPage);
+        } else {
+            showResult('error', '操作失败: ' + res.error);
+        }
+    }
+
+    document.getElementById('createForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('c_username').value;
+        const name = document.getElementById('c_name').value;
+        const email = document.getElementById('c_email').value;
+        const generatePassword = document.getElementById('c_password_opt').value === 'true';
+
+        showResult('success', '正在创建...'); 
+        
+        const res = await apiCall('/api/create', { username, name, email, generatePassword });
+        if (res.success) {
+            showResult('success', `
+                <strong>🎉 创建成功!</strong><br><br>
+                用户: ${res.data.user.username}<br>
+                初始密码: <code>${res.data.initial_password}</code>
+            `);
+            document.getElementById('createForm').reset();
+            loadUsers(1); 
+        } else {
+            showResult('error', '创建失败: ' + res.error);
+        }
+    };
+</script>
+
+</body>
+</html>

@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitLab 即将过期权限</title>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-hover: #0284c7;
+            --primary-light: #e0f2fe;
+            --primary-border: #bae6fd;
+            --success: #10b981;
+            --success-hover: #059669;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --secondary: #64748b;
+            --bg-body: #f0f9ff;
+            --bg-surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+            --shadow-lg: 0 10px 15px -3px rgb(14 165 233 / 0.05), 0 4px 6px -4px rgb(14 165 233 / 0.05);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-surface);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--text-main);
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-bottom: 32px;
+        }
+
+        .nav {
+            display: flex;
+            margin-bottom: 30px;
+            background: #f8fafc;
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            max-width: 640px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav a {
+            flex: 1;
+            text-align: center;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: var(--text-muted);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .nav a:hover { color: var(--text-main); background: var(--bg-surface); }
+
+        .nav a.active {
+            background: var(--bg-surface);
+            color: var(--primary);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 统计卡片 */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            padding: 20px 24px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-card h4 { margin: 0 0 6px 0; font-size: 13px; color: var(--text-muted); font-weight: 500; }
+        .stat-card .number { font-size: 32px; font-weight: 800; }
+        .stat-card:nth-child(1) .number { color: var(--text-main); }
+        .stat-card:nth-child(2) .number { color: var(--danger); }
+        .stat-card:nth-child(3) .number { color: var(--warning); }
+        .stat-card:nth-child(4) .number { color: var(--primary); }
+
+        /* 筛选栏 */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-bar input, .filter-bar select {
+            padding: 10px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            background: white;
+            color: var(--text-main);
+            transition: border-color 0.2s;
+        }
+
+        .filter-bar input:focus, .filter-bar select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+
+        .filter-bar input { flex: 2; min-width: 200px; }
+        .filter-bar select { flex: 1; min-width: 140px; cursor: pointer; }
+
+        /* 按钮 */
+        button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        button:active { transform: translateY(0); }
+        button.success { background: var(--success); }
+        button.success:hover { background: var(--success-hover); }
+        button.secondary { background: var(--secondary); }
+        button.sm { padding: 5px 12px; font-size: 13px; }
+        button:disabled { background: var(--border-color); color: var(--text-muted); box-shadow: none; cursor: not-allowed; transform: none; }
+
+        /* 表格容器 */
+        .table-wrapper {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: white;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
+        th { background: #f8fafc; font-weight: 600; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+        tr:last-child td { border-bottom: none; }
+        tr { transition: background 0.15s; }
+
+        /* 行颜色 - 按紧急程度 */
+        tr.urgency-critical { border-left: 3px solid var(--danger); }
+        tr.urgency-critical:hover { background: #fff5f5; }
+        tr.urgency-high { border-left: 3px solid var(--warning); }
+        tr.urgency-high:hover { background: #fffbeb; }
+        tr.urgency-medium { border-left: 3px solid #eab308; }
+        tr.urgency-medium:hover { background: #fefce8; }
+
+        /* 剩余天数徽章 */
+        .days-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .days-critical { background: #fee2e2; color: #b91c1c; }
+        .days-high { background: #ffedd5; color: #c2410c; }
+        .days-medium { background: #fef9c3; color: #854d0e; }
+
+        /* 权限标签 */
+        .permission-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .perm-owner { background: #fee2e2; color: #b91c1c; }
+        .perm-maintainer { background: #fef3c7; color: #b45309; }
+        .perm-developer { background: #d1fae5; color: #047857; }
+        .perm-reporter { background: #e0f2fe; color: #0369a1; }
+        .perm-guest { background: #f1f5f9; color: #475569; }
+
+        /* 类型徽章 */
+        .type-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .type-group { background: #ede9fe; color: #6d28d9; }
+        .type-project { background: #dcfce7; color: #166534; }
+
+        /* 资源路径 */
+        .resource-name { font-weight: 600; color: var(--text-main); }
+        .resource-path {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+
+        /* 批量操作栏 */
+        .bulk-bar {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .bulk-bar.visible { display: flex; }
+
+        .bulk-bar .selected-count {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d4ed8;
+            flex: 1;
+        }
+
+        .bulk-bar select {
+            padding: 7px 10px;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: white;
+            cursor: pointer;
+        }
+
+        /* 复选框列 */
+        .col-check { width: 40px; text-align: center; }
+        input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+
+        /* 延期操作 */
+        .extend-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+        .extend-form select {
+            padding: 5px 8px;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: white;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+
+        .extend-form select:focus { outline: none; border-color: var(--primary); }
+
+        /* 加载和空状态 */
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .loading-state .spinner {
+            display: inline-block;
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        /* 结果提示 */
+        #result {
+            margin-top: 20px;
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            display: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .success-msg { background: #ecfdf5; color: #065f46; border: 1px solid #10b981; }
+        .error-msg { background: #fef2f2; color: #991b1b; border: 1px solid #ef4444; }
+
+        /* 过期日期列 */
+        .expiry-date { font-size: 13px; white-space: nowrap; }
+
+        @media (max-width: 768px) {
+            body { padding: 16px 8px; }
+            .container { padding: 20px 12px; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            th, td { padding: 10px 8px; font-size: 12px; }
+            .filter-bar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>GitLab 即将过期权限</h1>
+    <p class="subtitle">扫描所有组和项目，展示30天内将过期的权限，支持一键延期</p>
+
+    <div class="nav">
+        <a href="index.html">👥 用户管理</a>
+        <a href="projects.html">🛡️ 项目权限</a>
+        <a href="expiring.html" class="active">⏰ 即将过期</a>
+        <a href="permanent.html">♾️ 长期权限</a>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <h4>即将过期总数</h4>
+            <div class="number" id="totalCount">-</div>
+        </div>
+        <div class="stat-card">
+            <h4>7天内过期</h4>
+            <div class="number" id="criticalCount">-</div>
+        </div>
+        <div class="stat-card">
+            <h4>14天内过期</h4>
+            <div class="number" id="highCount">-</div>
+        </div>
+        <div class="stat-card">
+            <h4>已检查 组 / 项目</h4>
+            <div class="number" id="checkedCount">-</div>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <select id="urgencyFilter" onchange="applyFilters()">
+            <option value="">所有紧急度</option>
+            <option value="critical">紧急 (≤7天)</option>
+            <option value="high">较高 (≤14天)</option>
+            <option value="medium">普通 (≤30天)</option>
+        </select>
+        <select id="typeFilter" onchange="applyFilters()">
+            <option value="">所有类型</option>
+            <option value="group">组权限</option>
+            <option value="project">项目权限</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="搜索用户名或资源名..." oninput="applyFilters()">
+        <button onclick="loadExpiringPermissions()">刷新数据</button>
+    </div>
+
+    <div class="bulk-bar" id="bulkBar">
+        <span class="selected-count" id="bulkCount">已选择 0 项</span>
+        <select id="bulkDays">
+            <option value="30" selected>+30天</option>
+            <option value="60">+60天</option>
+            <option value="90">+90天</option>
+            <option value="180">+180天</option>
+            <option value="365">+365天</option>
+        </select>
+        <button class="success" id="bulkExtendBtn" onclick="batchExtend()">批量延期</button>
+        <button class="secondary" onclick="clearSelection()">清除选择</button>
+    </div>
+
+    <div id="loadingState" class="loading-state" style="display: none;">
+        <div style="width: 100%; max-width: 520px; margin: 0 auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span id="progressMsg" style="font-size: 14px; font-weight: 500; color: var(--text-main);">正在初始化...</span>
+                <span id="progressPct" style="font-size: 14px; font-weight: 700; color: var(--primary); min-width: 38px; text-align: right;">0%</span>
+            </div>
+            <div style="background: var(--border-color); border-radius: 999px; height: 10px; overflow: hidden;">
+                <div id="progressBar" style="height: 100%; background: linear-gradient(90deg, var(--primary), #38bdf8); border-radius: 999px; transition: width 0.35s ease; width: 0%;"></div>
+            </div>
+            <div style="margin-top: 10px; font-size: 13px; color: var(--text-muted); text-align: center;">
+                <span id="progressFound">已发现 0 条即将过期权限</span>
+                &nbsp;·&nbsp;<span style="color: #94a3b8;">首次加载可能需要数十秒</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="tableContainer" style="display: none;">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-check"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="全选"></th>
+                        <th style="width: 88px;">剩余天数</th>
+                        <th style="width: 108px;">过期日期</th>
+                        <th style="width: 140px;">用户名</th>
+                        <th style="width: 110px;">权限级别</th>
+                        <th style="width: 56px;">类型</th>
+                        <th>资源名称</th>
+                        <th style="width: 185px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    let allItems = [];
+    let filteredItems = [];
+    let selectedKeys = new Set();
+
+    function getItemKey(item) {
+        return `${item.resource_type}-${item.resource_id}-${item.user_id}`;
+    }
+
+    function toggleItemSelection(key, checked) {
+        if (checked) {
+            selectedKeys.add(key);
+        } else {
+            selectedKeys.delete(key);
+        }
+        updateBulkBar();
+        updateSelectAllState();
+    }
+
+    function toggleSelectAll(checked) {
+        for (const item of filteredItems) {
+            const key = getItemKey(item);
+            if (checked) {
+                selectedKeys.add(key);
+            } else {
+                selectedKeys.delete(key);
+            }
+        }
+        document.querySelectorAll('.row-check').forEach(cb => { cb.checked = checked; });
+        updateBulkBar();
+    }
+
+    function clearSelection() {
+        selectedKeys.clear();
+        document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
+        const selectAll = document.getElementById('selectAll');
+        if (selectAll) selectAll.checked = false;
+        updateBulkBar();
+    }
+
+    function updateSelectAllState() {
+        const selectAll = document.getElementById('selectAll');
+        if (!selectAll || filteredItems.length === 0) return;
+        const allChecked = filteredItems.every(item => selectedKeys.has(getItemKey(item)));
+        selectAll.checked = allChecked;
+        selectAll.indeterminate = !allChecked && filteredItems.some(item => selectedKeys.has(getItemKey(item)));
+    }
+
+    function updateBulkBar() {
+        const count = selectedKeys.size;
+        const bar = document.getElementById('bulkBar');
+        const countEl = document.getElementById('bulkCount');
+        if (count > 0) {
+            bar.classList.add('visible');
+            countEl.textContent = `已选择 ${count} 项`;
+        } else {
+            bar.classList.remove('visible');
+        }
+    }
+
+    async function batchExtend() {
+        if (selectedKeys.size === 0) return;
+
+        const days = parseInt(document.getElementById('bulkDays').value);
+        const selectedItems = filteredItems.filter(item => selectedKeys.has(getItemKey(item)));
+
+        const btn = document.getElementById('bulkExtendBtn');
+        btn.disabled = true;
+        btn.textContent = '处理中...';
+
+        try {
+            const response = await fetch('/api/batch-extend-permissions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: selectedItems, days }),
+            });
+            const result = await response.json();
+
+            const successCount = result.results ? result.results.length : 0;
+            const errorCount = result.errors ? result.errors.length : 0;
+
+            if (errorCount > 0) {
+                const errMsg = result.errors.map(e => `${escapeHtml(e.username)}: ${escapeHtml(e.error)}`).join('<br>');
+                showResult('error-msg', `延期完成：${successCount} 项成功，${errorCount} 项失败<br>${errMsg}`);
+            } else {
+                showResult('success-msg', `已成功将 ${successCount} 项权限延期 ${days} 天`);
+            }
+
+            clearSelection();
+            if (successCount > 0) loadExpiringPermissions();
+        } catch (e) {
+            showResult('error-msg', '批量延期失败: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '批量延期';
+        }
+    }
+
+    let activeEventSource = null;
+    let renderScheduled = false;
+
+    function setProgress(percent, message, found) {
+        const bar = document.getElementById('progressBar');
+        const msg = document.getElementById('progressMsg');
+        const pct = document.getElementById('progressPct');
+        const fnd = document.getElementById('progressFound');
+        if (bar) bar.style.width = percent + '%';
+        if (msg) msg.textContent = message;
+        if (pct) pct.textContent = percent + '%';
+        if (fnd) fnd.textContent = `已发现 ${found} 条即将过期权限`;
+    }
+
+    function scheduleRender() {
+        if (!renderScheduled) {
+            renderScheduled = true;
+            requestAnimationFrame(() => {
+                renderScheduled = false;
+                applyFilters();
+                document.getElementById('tableContainer').style.display = 'block';
+            });
+        }
+    }
+
+    loadExpiringPermissions();
+
+    function loadExpiringPermissions() {
+        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
+
+        const loadingState = document.getElementById('loadingState');
+        const tableContainer = document.getElementById('tableContainer');
+        loadingState.style.display = 'block';
+        tableContainer.style.display = 'none';
+        allItems = []; resetStats(); selectedKeys.clear(); updateBulkBar();
+        setProgress(0, '正在连接...', 0);
+
+        let isDone = false;
+        const es = new EventSource('/api/expiring-permissions/stream?days=30');
+        activeEventSource = es;
+
+        es.addEventListener('progress', (e) => {
+            const d = JSON.parse(e.data);
+            setProgress(d.percent, d.message, d.found || 0);
+        });
+
+        es.addEventListener('item', (e) => {
+            const item = JSON.parse(e.data);
+            allItems.push(item);
+            scheduleRender();
+        });
+
+        es.addEventListener('done', (e) => {
+            isDone = true;
+            es.close(); activeEventSource = null;
+            const d = JSON.parse(e.data);
+            loadingState.style.display = 'none';
+            updateStats(allItems, d.checked_groups, d.checked_projects);
+            applyFilters();
+            tableContainer.style.display = 'block';
+        });
+
+        es.addEventListener('fail', (e) => {
+            isDone = true;
+            es.close(); activeEventSource = null;
+            loadingState.style.display = 'none';
+            try { showResult('error-msg', '加载失败: ' + JSON.parse(e.data).error); }
+            catch (_) { showResult('error-msg', '加载失败'); }
+        });
+
+        es.onerror = () => {
+            if (isDone) return;
+            es.close(); activeEventSource = null;
+            loadingState.style.display = 'none';
+            showResult('error-msg', '连接中断，请刷新重试');
+        };
+    }
+
+    function resetStats() {
+        ['totalCount', 'criticalCount', 'highCount', 'checkedCount'].forEach(id => {
+            document.getElementById(id).textContent = '-';
+        });
+    }
+
+    function updateStats(items, checkedGroups, checkedProjects) {
+        const now = new Date();
+        const d7 = new Date(now.getTime() + 7 * 86400000);
+        const d14 = new Date(now.getTime() + 14 * 86400000);
+
+        document.getElementById('totalCount').textContent = items.length;
+        document.getElementById('criticalCount').textContent = items.filter(i => new Date(i.expires_at) <= d7).length;
+        document.getElementById('highCount').textContent = items.filter(i => new Date(i.expires_at) <= d14).length;
+        document.getElementById('checkedCount').textContent =
+            (checkedGroups !== undefined && checkedProjects !== undefined)
+                ? `${checkedGroups} / ${checkedProjects}`
+                : '-';
+    }
+
+    function applyFilters() {
+        const urgency = document.getElementById('urgencyFilter').value;
+        const type = document.getElementById('typeFilter').value;
+        const search = document.getElementById('searchInput').value.toLowerCase().trim();
+        const now = new Date();
+
+        filteredItems = allItems.filter(item => {
+            if (urgency) {
+                const daysLeft = Math.ceil((new Date(item.expires_at) - now) / 86400000);
+                if (urgency === 'critical' && daysLeft > 7) return false;
+                if (urgency === 'high' && daysLeft > 14) return false;
+                if (urgency === 'medium' && daysLeft > 30) return false;
+            }
+            if (type && item.resource_type !== type) return false;
+            if (search) {
+                const haystack = [item.username, item.name, item.resource_name, item.resource_path].join(' ').toLowerCase();
+                if (!haystack.includes(search)) return false;
+            }
+            return true;
+        });
+
+        // Remove selected keys that are no longer in filtered results
+        for (const key of [...selectedKeys]) {
+            if (!filteredItems.some(item => getItemKey(item) === key)) {
+                selectedKeys.delete(key);
+            }
+        }
+        updateBulkBar();
+
+        renderTable(filteredItems);
+    }
+
+    function renderTable(items) {
+        const tbody = document.getElementById('tableBody');
+        const tableContainer = document.getElementById('tableContainer');
+        tableContainer.style.display = 'block';
+        const now = new Date();
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">暂无即将过期的权限</div></td></tr>';
+            updateSelectAllState();
+            return;
+        }
+
+        tbody.innerHTML = items.map((item, idx) => {
+            const expiry = new Date(item.expires_at);
+            const daysLeft = Math.ceil((expiry - now) / 86400000);
+
+            let urgencyClass, daysBadgeClass;
+            if (daysLeft <= 7) {
+                urgencyClass = 'urgency-critical';
+                daysBadgeClass = 'days-critical';
+            } else if (daysLeft <= 14) {
+                urgencyClass = 'urgency-high';
+                daysBadgeClass = 'days-high';
+            } else {
+                urgencyClass = 'urgency-medium';
+                daysBadgeClass = 'days-medium';
+            }
+
+            const permClass = getPermClass(item.access_level);
+            const permText = getPermText(item.access_level);
+            const typeClass = item.resource_type === 'group' ? 'type-group' : 'type-project';
+            const typeText = item.resource_type === 'group' ? '组' : '项目';
+
+            const nameDisplay = item.resource_url
+                ? `<a href="${escapeHtml(item.resource_url)}" target="_blank" class="resource-name" style="color: var(--primary); text-decoration: none;">${escapeHtml(item.resource_name)}</a>`
+                : `<span class="resource-name">${escapeHtml(item.resource_name)}</span>`;
+
+            const selectId = `sel-${idx}`;
+            const itemKey = getItemKey(item);
+            const isChecked = selectedKeys.has(itemKey);
+
+            return `<tr class="${urgencyClass}">
+                <td class="col-check"><input type="checkbox" class="row-check" data-key="${escapeHtml(itemKey)}" ${isChecked ? 'checked' : ''} onchange="toggleItemSelection('${escapeHtml(itemKey)}', this.checked)"></td>
+                <td><span class="days-badge ${daysBadgeClass}">${daysLeft} 天</span></td>
+                <td class="expiry-date">${formatDate(item.expires_at)}</td>
+                <td>
+                    <strong>${escapeHtml(item.username)}</strong>
+                    ${item.name && item.name !== item.username ? `<div style="font-size:12px;color:var(--text-muted);">${escapeHtml(item.name)}</div>` : ''}
+                </td>
+                <td><span class="permission-tag ${permClass}">${permText}</span></td>
+                <td><span class="type-badge ${typeClass}">${typeText}</span></td>
+                <td>
+                    ${nameDisplay}
+                    <div class="resource-path" title="${escapeHtml(item.resource_path)}">${escapeHtml(item.resource_path)}</div>
+                </td>
+                <td>
+                    <div class="extend-form">
+                        <select id="${selectId}">
+                            <option value="30" selected>+30天</option>
+                            <option value="60">+60天</option>
+                            <option value="90">+90天</option>
+                            <option value="180">+180天</option>
+                            <option value="365">+365天</option>
+                        </select>
+                        <button class="sm success" onclick="extendPermission(
+                            '${item.resource_type}',
+                            ${item.resource_id},
+                            ${item.user_id},
+                            '${escapeHtml(item.username)}',
+                            ${item.access_level},
+                            '${item.expires_at}',
+                            '${selectId}'
+                        )">延期</button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        updateSelectAllState();
+    }
+
+    async function extendPermission(resourceType, resourceId, userId, username, accessLevel, currentExpiry, selectId) {
+        const selectEl = document.getElementById(selectId);
+        const days = parseInt(selectEl ? selectEl.value : 90);
+
+        const currentDate = new Date(currentExpiry);
+        const newExpiry = new Date(currentDate.getTime() + days * 86400000);
+        const newExpiryStr = formatDate(newExpiry);
+
+        const endpoint = resourceType === 'group'
+            ? `/api/groups/${resourceId}/members/update`
+            : `/api/projects/${resourceId}/members/update`;
+
+        const btn = selectEl ? selectEl.nextElementSibling : null;
+        if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    changes: [{
+                        action: 'update',
+                        user_id: userId,
+                        username: username,
+                        access_level: accessLevel,
+                        expires_at: newExpiryStr
+                    }]
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.errors && result.errors.length > 0) {
+                showResult('error-msg', `延期失败: ${escapeHtml(result.errors[0].error)}`);
+                if (btn) { btn.disabled = false; btn.textContent = '延期'; }
+            } else {
+                showResult('success-msg', `已将 ${escapeHtml(username)} 的权限延期 ${days} 天，新过期时间：${newExpiryStr}`);
+                if (btn) btn.textContent = '已延期';
+            }
+        } catch (e) {
+            showResult('error-msg', '操作失败: ' + e.message);
+            if (btn) { btn.disabled = false; btn.textContent = '延期'; }
+        }
+    }
+
+    function showResult(type, message) {
+        const el = document.getElementById('result');
+        el.className = type;
+        el.innerHTML = message;
+        el.style.display = 'block';
+        if (type === 'success-msg') {
+            setTimeout(() => { el.style.display = 'none'; }, 6000);
+        }
+    }
+
+    function getPermClass(level) {
+        switch (level) {
+            case 50: return 'perm-owner';
+            case 40: return 'perm-maintainer';
+            case 30: return 'perm-developer';
+            case 20: return 'perm-reporter';
+            case 10: return 'perm-guest';
+            default: return '';
+        }
+    }
+
+    function getPermText(level) {
+        switch (level) {
+            case 50: return '所有者';
+            case 40: return '维护者';
+            case 30: return '开发者';
+            case 20: return '报告者';
+            case 10: return '访客';
+            default: return `Level ${level}`;
+        }
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const d = new Date(dateString);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
+</script>
+
+</body>
+</html>

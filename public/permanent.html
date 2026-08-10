@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitLab 长期权限</title>
+    <style>
+        :root {
+            --primary: #0ea5e9; --primary-hover: #0284c7; --primary-light: #e0f2fe;
+            --primary-border: #bae6fd; --success: #10b981; --success-hover: #059669;
+            --warning: #f59e0b; --danger: #ef4444; --secondary: #64748b;
+            --bg-body: #f0f9ff; --bg-surface: #ffffff; --text-main: #0f172a;
+            --text-muted: #64748b; --border-color: #e2e8f0; --radius-lg: 16px;
+            --radius-md: 10px; --radius-sm: 6px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+            --shadow-lg: 0 10px 15px -3px rgb(14 165 233 / 0.05), 0 4px 6px -4px rgb(14 165 233 / 0.05);
+        }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-body); color: var(--text-main); margin: 0; padding: 40px 20px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; background: var(--bg-surface); padding: 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border: 1px solid rgba(255,255,255,0.6); }
+        h1 { text-align: center; color: var(--text-main); font-size: 32px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.025em; }
+        .subtitle { text-align: center; color: var(--text-muted); font-size: 15px; margin-bottom: 32px; }
+        .nav { display: flex; margin-bottom: 30px; background: #f8fafc; padding: 6px; border-radius: 12px; border: 1px solid var(--border-color); max-width: 800px; margin-left: auto; margin-right: auto; }
+        .nav a { flex: 1; text-align: center; padding: 12px 16px; text-decoration: none; color: var(--text-muted); border-radius: var(--radius-md); font-weight: 500; font-size: 14px; transition: all 0.2s ease; }
+        .nav a:hover { color: var(--text-main); background: var(--bg-surface); }
+        .nav a.active { background: var(--bg-surface); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-sm); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 20px 24px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-card h4 { margin: 0 0 6px 0; font-size: 13px; color: var(--text-muted); font-weight: 500; }
+        .stat-card .number { font-size: 32px; font-weight: 800; }
+        .stat-card:nth-child(1) .number { color: var(--text-main); }
+        .stat-card:nth-child(2) .number { color: var(--primary); }
+        .stat-card:nth-child(3) .number { color: var(--success); }
+        .stat-card:nth-child(4) .number { color: var(--secondary); }
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); flex-wrap: wrap; align-items: center; }
+        .filter-bar input, .filter-bar select { padding: 10px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 14px; background: white; color: var(--text-main); transition: border-color 0.2s; }
+        .filter-bar input:focus, .filter-bar select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
+        .filter-bar input { flex: 2; min-width: 200px; }
+        .filter-bar select { flex: 1; min-width: 140px; cursor: pointer; }
+        button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease; box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; gap: 6px; }
+        button:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        button:active { transform: translateY(0); }
+        button.success { background: var(--success); }
+        button.success:hover { background: var(--success-hover); }
+        button.secondary { background: var(--secondary); }
+        button.sm { padding: 5px 12px; font-size: 13px; }
+        button:disabled { background: var(--border-color); color: var(--text-muted); box-shadow: none; cursor: not-allowed; transform: none; }
+        .table-wrapper { border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: white; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
+        th { background: #f8fafc; font-weight: 600; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+        tr:last-child td { border-bottom: none; }
+        tr { transition: background 0.15s; }
+        tr:hover { background: var(--bg-body); }
+        .permission-tag { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .perm-owner { background: #fee2e2; color: #b91c1c; }
+        .perm-maintainer { background: #fef3c7; color: #b45309; }
+        .perm-developer { background: #d1fae5; color: #047857; }
+        .perm-reporter { background: #e0f2fe; color: #0369a1; }
+        .perm-guest { background: #f1f5f9; color: #475569; }
+        .type-badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .type-group { background: #ede9fe; color: #6d28d9; }
+        .type-project { background: #dcfce7; color: #166534; }
+        .class-badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .class-permanent { background: #e0f2fe; color: #0369a1; }
+        .class-long-term { background: #fef3c7; color: #b45309; }
+        .resource-name { font-weight: 600; color: var(--text-main); }
+        .resource-path { color: var(--text-muted); font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+        .bulk-bar { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); margin-bottom: 12px; flex-wrap: wrap; }
+        .bulk-bar.visible { display: flex; }
+        .bulk-bar .selected-count { font-size: 14px; font-weight: 600; color: #1d4ed8; flex: 1; }
+        .bulk-bar input[type="date"] { padding: 7px 10px; font-size: 13px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: white; cursor: pointer; }
+        .col-check { width: 40px; text-align: center; }
+        input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+        .set-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .set-form input[type="date"] { padding: 5px 8px; font-size: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: white; cursor: pointer; color: var(--text-main); }
+        .set-form input[type="date"]:focus { outline: none; border-color: var(--primary); }
+        .loading-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .loading-state .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 15px; }
+        #result { margin-top: 20px; padding: 14px 18px; border-radius: var(--radius-sm); display: none; font-size: 14px; font-weight: 500; }
+        .success-msg { background: #ecfdf5; color: #065f46; border: 1px solid #10b981; }
+        .error-msg { background: #fef2f2; color: #991b1b; border: 1px solid #ef4444; }
+        @media (max-width: 768px) { body { padding: 16px 8px; } .container { padding: 20px 12px; } .stats { grid-template-columns: repeat(2, 1fr); } th, td { padding: 10px 8px; font-size: 12px; } .filter-bar { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>GitLab 长期权限</h1>
+    <p class="subtitle">展示永久权限及有效期超过1年的权限，支持设置到期时间</p>
+
+    <div class="nav">
+        <a href="index.html">👥 用户管理</a>
+        <a href="projects.html">🛡️ 项目权限</a>
+        <a href="expiring.html">⏰ 即将过期</a>
+        <a href="permanent.html" class="active">♾️ 长期权限</a>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><h4>长期权限总数</h4><div class="number" id="totalCount">-</div></div>
+        <div class="stat-card"><h4>永久权限</h4><div class="number" id="permanentCount">-</div></div>
+        <div class="stat-card"><h4>超1年权限</h4><div class="number" id="longTermCount">-</div></div>
+        <div class="stat-card"><h4>已检查 组 / 项目</h4><div class="number" id="checkedCount">-</div></div>
+    </div>
+
+    <div class="filter-bar">
+        <select id="classFilter" onchange="applyFilters()">
+            <option value="">所有类型</option>
+            <option value="permanent">永久权限</option>
+            <option value="long-term">超1年权限</option>
+        </select>
+        <select id="typeFilter" onchange="applyFilters()">
+            <option value="">所有资源</option>
+            <option value="group">组</option>
+            <option value="project">项目</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="搜索用户名或资源名..." oninput="applyFilters()">
+        <button onclick="loadLongLivedPermissions()">刷新数据</button>
+    </div>
+
+    <div class="bulk-bar" id="bulkBar">
+        <span class="selected-count" id="bulkCount">已选择 0 项</span>
+        <input type="date" id="bulkDate">
+        <button class="success" id="bulkSetBtn" onclick="batchSetExpiry()">批量设置到期时间</button>
+        <button class="secondary" onclick="clearSelection()">清除选择</button>
+    </div>
+
+    <div id="loadingState" class="loading-state" style="display: none;">
+        <div style="width: 100%; max-width: 520px; margin: 0 auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span id="progressMsg" style="font-size: 14px; font-weight: 500; color: var(--text-main);">正在初始化...</span>
+                <span id="progressPct" style="font-size: 14px; font-weight: 700; color: var(--primary); min-width: 38px; text-align: right;">0%</span>
+            </div>
+            <div style="background: var(--border-color); border-radius: 999px; height: 10px; overflow: hidden;">
+                <div id="progressBar" style="height: 100%; background: linear-gradient(90deg, var(--primary), #38bdf8); border-radius: 999px; transition: width 0.35s ease; width: 0%;"></div>
+            </div>
+            <div style="margin-top: 10px; font-size: 13px; color: var(--text-muted); text-align: center;">
+                <span id="progressFound">已发现 0 条长期权限</span>
+                &nbsp;·&nbsp;<span style="color: #94a3b8;">首次加载可能需要数十秒</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="tableContainer" style="display: none;">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-check"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="全选"></th>
+                        <th style="width:80px;">分类</th>
+                        <th style="width:140px;">用户名</th>
+                        <th style="width:110px;">权限级别</th>
+                        <th style="width:56px;">类型</th>
+                        <th>资源名称</th>
+                        <th style="width:110px;">有效期</th>
+                        <th style="width:230px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <div id="result"></div>
+</div>
+
+<script>
+    let allItems = [];
+    let filteredItems = [];
+    let selectedKeys = new Set();
+
+    function getItemKey(item) { return `${item.resource_type}-${item.resource_id}-${item.user_id}`; }
+
+    function toggleItemSelection(key, checked) {
+        if (checked) selectedKeys.add(key); else selectedKeys.delete(key);
+        updateBulkBar(); updateSelectAllState();
+    }
+
+    function toggleSelectAll(checked) {
+        for (const item of filteredItems) {
+            const key = getItemKey(item);
+            if (checked) selectedKeys.add(key); else selectedKeys.delete(key);
+        }
+        document.querySelectorAll('.row-check').forEach(cb => { cb.checked = checked; });
+        updateBulkBar();
+    }
+
+    function clearSelection() {
+        selectedKeys.clear();
+        document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
+        const sa = document.getElementById('selectAll');
+        if (sa) sa.checked = false;
+        updateBulkBar();
+    }
+
+    function updateSelectAllState() {
+        const sa = document.getElementById('selectAll');
+        if (!sa || filteredItems.length === 0) return;
+        const allChecked = filteredItems.every(item => selectedKeys.has(getItemKey(item)));
+        sa.checked = allChecked;
+        sa.indeterminate = !allChecked && filteredItems.some(item => selectedKeys.has(getItemKey(item)));
+    }
+
+    function updateBulkBar() {
+        const count = selectedKeys.size;
+        const bar = document.getElementById('bulkBar');
+        if (count > 0) { bar.classList.add('visible'); document.getElementById('bulkCount').textContent = `已选择 ${count} 项`; }
+        else bar.classList.remove('visible');
+    }
+
+    let activeEventSource = null;
+    let renderScheduled = false;
+
+    function setProgress(percent, message, found) {
+        const bar = document.getElementById('progressBar');
+        const msg = document.getElementById('progressMsg');
+        const pct = document.getElementById('progressPct');
+        const fnd = document.getElementById('progressFound');
+        if (bar) bar.style.width = percent + '%';
+        if (msg) msg.textContent = message;
+        if (pct) pct.textContent = percent + '%';
+        if (fnd) fnd.textContent = `已发现 ${found} 条长期权限`;
+    }
+
+    function scheduleRender() {
+        if (!renderScheduled) {
+            renderScheduled = true;
+            requestAnimationFrame(() => {
+                renderScheduled = false;
+                applyFilters();
+                document.getElementById('tableContainer').style.display = 'block';
+            });
+        }
+    }
+
+    loadLongLivedPermissions();
+
+    function loadLongLivedPermissions() {
+        if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
+
+        const ls = document.getElementById('loadingState');
+        const tc = document.getElementById('tableContainer');
+        ls.style.display = 'block'; tc.style.display = 'none';
+        allItems = []; resetStats(); selectedKeys.clear(); updateBulkBar();
+        setProgress(0, '正在连接...', 0);
+
+        let isDone = false;
+        const es = new EventSource('/api/long-lived-permissions/stream');
+        activeEventSource = es;
+
+        es.addEventListener('progress', (e) => {
+            const d = JSON.parse(e.data);
+            setProgress(d.percent, d.message, d.found || 0);
+        });
+
+        es.addEventListener('item', (e) => {
+            const item = JSON.parse(e.data);
+            allItems.push(item);
+            document.getElementById('totalCount').textContent = allItems.length;
+            document.getElementById('permanentCount').textContent = allItems.filter(i => !i.expires_at).length;
+            document.getElementById('longTermCount').textContent = allItems.filter(i => i.expires_at).length;
+            scheduleRender();
+        });
+
+        es.addEventListener('done', (e) => {
+            isDone = true;
+            es.close(); activeEventSource = null;
+            const d = JSON.parse(e.data);
+            ls.style.display = 'none';
+            updateStats(allItems, d.checked_groups, d.checked_projects);
+            applyFilters();
+            tc.style.display = 'block';
+        });
+
+        es.addEventListener('fail', (e) => {
+            isDone = true;
+            es.close(); activeEventSource = null;
+            ls.style.display = 'none';
+            try { showResult('error-msg', '加载失败: ' + JSON.parse(e.data).error); }
+            catch (_) { showResult('error-msg', '加载失败'); }
+        });
+
+        es.onerror = () => {
+            if (isDone) return;
+            es.close(); activeEventSource = null;
+            ls.style.display = 'none';
+            showResult('error-msg', '连接中断，请刷新重试');
+        };
+    }
+
+    function resetStats() {
+        ['totalCount','permanentCount','longTermCount','checkedCount'].forEach(id => { document.getElementById(id).textContent = '-'; });
+    }
+
+    function updateStats(items, checkedGroups, checkedProjects) {
+        document.getElementById('totalCount').textContent = items.length;
+        document.getElementById('permanentCount').textContent = items.filter(i => !i.expires_at).length;
+        document.getElementById('longTermCount').textContent = items.filter(i => i.expires_at).length;
+        if (checkedGroups !== undefined && checkedProjects !== undefined) {
+            document.getElementById('checkedCount').textContent = `${checkedGroups} / ${checkedProjects}`;
+        }
+    }
+
+    function applyFilters() {
+        const cf = document.getElementById('classFilter').value;
+        const tf = document.getElementById('typeFilter').value;
+        const search = document.getElementById('searchInput').value.toLowerCase().trim();
+        filteredItems = allItems.filter(item => {
+            const itemClass = item.expires_at ? 'long-term' : 'permanent';
+            if (cf && itemClass !== cf) return false;
+            if (tf && item.resource_type !== tf) return false;
+            if (search) {
+                const hay = [item.username, item.name, item.resource_name, item.resource_path].join(' ').toLowerCase();
+                if (!hay.includes(search)) return false;
+            }
+            return true;
+        });
+        for (const key of [...selectedKeys]) { if (!filteredItems.some(item => getItemKey(item) === key)) selectedKeys.delete(key); }
+        updateBulkBar(); renderTable(filteredItems);
+    }
+
+    function renderTable(items) {
+        const tbody = document.getElementById('tableBody');
+        document.getElementById('tableContainer').style.display = 'block';
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">暂无长期权限记录</div></td></tr>';
+            updateSelectAllState(); return;
+        }
+        const today = new Date();
+        const defaultDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+        const defaultDateStr = formatDate(defaultDate);
+        tbody.innerHTML = items.map((item, idx) => {
+            const itemClass = item.expires_at ? 'long-term' : 'permanent';
+            const classText = item.expires_at ? '超1年' : '永久';
+            const classCss = item.expires_at ? 'class-long-term' : 'class-permanent';
+            const permClass = getPermClass(item.access_level);
+            const permText = getPermText(item.access_level);
+            const typeClass = item.resource_type === 'group' ? 'type-group' : 'type-project';
+            const typeText = item.resource_type === 'group' ? '组' : '项目';
+            const expiryDisplay = item.expires_at ? formatDate(item.expires_at) : '永久';
+            const nameDisplay = item.resource_url
+                ? `<a href="${escapeHtml(item.resource_url)}" target="_blank" class="resource-name" style="color:var(--primary);text-decoration:none;">${escapeHtml(item.resource_name)}</a>`
+                : `<span class="resource-name">${escapeHtml(item.resource_name)}</span>`;
+            const inputId = `date-${idx}`;
+            const itemKey = getItemKey(item);
+            return `<tr>
+                <td class="col-check"><input type="checkbox" class="row-check" data-key="${escapeHtml(itemKey)}" ${selectedKeys.has(itemKey) ? 'checked' : ''} onchange="toggleItemSelection('${escapeHtml(itemKey)}', this.checked)"></td>
+                <td><span class="class-badge ${classCss}">${classText}</span></td>
+                <td><strong>${escapeHtml(item.username)}</strong>${item.name && item.name !== item.username ? `<div style="font-size:12px;color:var(--text-muted);">${escapeHtml(item.name)}</div>` : ''}</td>
+                <td><span class="permission-tag ${permClass}">${permText}</span></td>
+                <td><span class="type-badge ${typeClass}">${typeText}</span></td>
+                <td>${nameDisplay}<div class="resource-path" title="${escapeHtml(item.resource_path)}">${escapeHtml(item.resource_path)}</div></td>
+                <td style="font-size:13px;white-space:nowrap;">${expiryDisplay}</td>
+                <td><div class="set-form">
+                    <input type="date" id="${inputId}" value="${defaultDateStr}">
+                    <button class="sm success" onclick="setExpiry('${item.resource_type}',${item.resource_id},${item.user_id},'${escapeHtml(item.username)}',${item.access_level},'${inputId}')">设置</button>
+                </div></td>
+            </tr>`;
+        }).join('');
+        updateSelectAllState();
+    }
+
+    async function setExpiry(resourceType, resourceId, userId, username, accessLevel, inputId) {
+        const inputEl = document.getElementById(inputId);
+        const newExpiry = inputEl ? inputEl.value : '';
+        if (!newExpiry) { showResult('error-msg', '请先选择到期时间'); return; }
+        const endpoint = resourceType === 'group'
+            ? `/api/groups/${resourceId}/members/update`
+            : `/api/projects/${resourceId}/members/update`;
+        const btn = inputEl ? inputEl.nextElementSibling : null;
+        if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ changes: [{ action: 'update', user_id: userId, username, access_level: accessLevel, expires_at: newExpiry }] })
+            });
+            const result = await response.json();
+            if (result.errors && result.errors.length > 0) {
+                showResult('error-msg', `设置失败: ${escapeHtml(result.errors[0].error)}`);
+                if (btn) { btn.disabled = false; btn.textContent = '设置'; }
+            } else {
+                showResult('success-msg', `已将 ${escapeHtml(username)} 的到期时间设为 ${newExpiry}`);
+                if (btn) btn.textContent = '已设置';
+                setTimeout(() => loadLongLivedPermissions(), 1500);
+            }
+        } catch (e) {
+            showResult('error-msg', '操作失败: ' + e.message);
+            if (btn) { btn.disabled = false; btn.textContent = '设置'; }
+        }
+    }
+
+    async function batchSetExpiry() {
+        if (selectedKeys.size === 0) return;
+        const newExpiry = document.getElementById('bulkDate').value;
+        if (!newExpiry) { showResult('error-msg', '请先选择到期时间'); return; }
+        const selectedItems = filteredItems.filter(item => selectedKeys.has(getItemKey(item)));
+        const btn = document.getElementById('bulkSetBtn');
+        btn.disabled = true; btn.textContent = '处理中...';
+        const results = [], errors = [];
+        for (const item of selectedItems) {
+            const endpoint = item.resource_type === 'group'
+                ? `/api/groups/${item.resource_id}/members/update`
+                : `/api/projects/${item.resource_id}/members/update`;
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ changes: [{ action: 'update', user_id: item.user_id, username: item.username, access_level: item.access_level, expires_at: newExpiry }] })
+                });
+                const result = await response.json();
+                if (result.errors && result.errors.length > 0) errors.push({ username: item.username, error: result.errors[0].error });
+                else results.push(item);
+            } catch (e) { errors.push({ username: item.username, error: e.message }); }
+        }
+        btn.disabled = false; btn.textContent = '批量设置到期时间';
+        if (errors.length > 0) {
+            const errMsg = errors.map(e => `${escapeHtml(e.username)}: ${escapeHtml(e.error)}`).join('<br>');
+            showResult('error-msg', `批量设置完成：${results.length} 项成功，${errors.length} 项失败<br>${errMsg}`);
+        } else { showResult('success-msg', `已将 ${results.length} 项权限的到期时间设为 ${newExpiry}`); }
+        clearSelection();
+        if (results.length > 0) loadLongLivedPermissions();
+    }
+
+    function showResult(type, message) {
+        const el = document.getElementById('result');
+        el.className = type; el.innerHTML = message; el.style.display = 'block';
+        if (type === 'success-msg') setTimeout(() => { el.style.display = 'none'; }, 6000);
+    }
+
+    function getPermClass(level) {
+        const map = { 50: 'perm-owner', 40: 'perm-maintainer', 30: 'perm-developer', 20: 'perm-reporter', 10: 'perm-guest' };
+        return map[level] || '';
+    }
+    function getPermText(level) {
+        const map = { 50: '所有者', 40: '维护者', 30: '开发者', 20: '报告者', 10: '访客' };
+        return map[level] || `Level ${level}`;
+    }
+    function formatDate(d) {
+        if (!d) return '';
+        const date = typeof d === 'string' ? new Date(d) : d;
+        return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    }
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div'); div.textContent = String(text); return div.innerHTML;
+    }
+</script>
+</body>
+</html>
