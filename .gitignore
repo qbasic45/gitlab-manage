@@ -143,4 +143,10 @@ coverage/
 # Temporary files
 *.tmp
 *~
+# Logs and temp files
+*.log
+
+# Environment
+.env
+*.env.*
 ```

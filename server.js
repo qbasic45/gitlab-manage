@@ -721,6 +721,8 @@ app.put('/api/projects/:projectId/description', async (req, res) => {
 });
 
 // API: 获取即将过期的权限（SSE 流式，带进度）
+const { scanMembers, createExpiringFilter, createLongLivedFilter } = require('./src/scan-logic');
+
 app.get('/api/expiring-permissions/stream', async (req, res) => {
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -735,6 +737,25 @@ app.get('/api/expiring-permissions/stream', async (req, res) => {
     const send = (event, data) => {
         if (!closed) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
+
+    try {
+        const days = parseInt(req.query.days || 30);
+        const filter = createExpiringFilter(days);
+        
+        await scanMembers(gitlabApi, filter, {
+            onProgress: (progress) => send('progress', progress),
+            onItem: (item) => send('item', item),
+            onError: (error) => console.warn(`扫描错误:`, error),
+        });
+
+        send('done', { message: 'Scan completed' });
+    } catch (error) {
+        console.error('SSE 即将过期权限扫描失败:', error.message);
+        send('fail', { error: error.message });
+    }
+
+    res.end();
+});
 
     try {
         const days = parseInt(req.query.days || 30);
