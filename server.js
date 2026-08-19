@@ -340,36 +340,47 @@ app.get('/api/groups/:groupId/projects', async (req, res) => {
         
         console.log(`[调试] 组 ${groupId}: 获取到 ${projects.length} 个项目`);
         
-        // 获取每个项目的成员权限
+        // 并发获取每个项目的成员权限（分批处理，防止限流）
+        const PROJECT_CONCURRENCY = 5;
         const projectsWithMembers = [];
         
-        for (const project of projects) {
-            try {
-                const membersResponse = await gitlabApi.get(`projects/${project.id}/members/all`);
-                const members = membersResponse.data.map(member => ({
-                    username: member.username,
-                    access_level: member.access_level,
-                    expires_at: member.expires_at
-                }));
-                
-                projectsWithMembers.push({
-                    id: project.id,
-                    name: project.name,
-                    path_with_namespace: project.path_with_namespace,
-                    description: project.description,
-                    web_url: project.web_url,
-                    members: members
-                });
-            } catch (memberError) {
-                console.warn(`获取项目 ${project.id} 的成员失败:`, memberError.message);
-                projectsWithMembers.push({
-                    id: project.id,
-                    name: project.name,
-                    path_with_namespace: project.path_with_namespace,
-                    description: project.description,
-                    web_url: project.web_url,
-                    members: []
-                });
+        for (let i = 0; i < projects.length; i += PROJECT_CONCURRENCY) {
+            const batch = projects.slice(i, i + PROJECT_CONCURRENCY);
+            const batchResults = await Promise.all(batch.map(async (project) => {
+                try {
+                    const membersResponse = await gitlabApi.get(`projects/${project.id}/members/all`);
+                    const members = membersResponse.data.map(member => ({
+                        username: member.username,
+                        access_level: member.access_level,
+                        expires_at: member.expires_at
+                    }));
+                    
+                    return {
+                        id: project.id,
+                        name: project.name,
+                        path_with_namespace: project.path_with_namespace,
+                        description: project.description,
+                        web_url: project.web_url,
+                        members: members
+                    };
+                } catch (memberError) {
+                    console.warn(`获取项目 ${project.id} 的成员失败:`, memberError.message);
+                    return {
+                        id: project.id,
+                        name: project.name,
+                        path_with_namespace: project.path_with_namespace,
+                        description: project.description,
+                        web_url: project.web_url,
+                        members: []
+                    };
+                }
+            }));
+            
+            projectsWithMembers.push(...batchResults);
+            
+            // 批次间短暂延迟，避免触发限流
+            if (i + PROJECT_CONCURRENCY < projects.length) {
+                await new Promise(r => setTimeout(r, 50));
             }
         }
         
@@ -411,60 +422,82 @@ app.get('/api/projects', async (req, res) => {
         
         console.log(`[调试] 获取到 ${allGroups.length} 个组`);
         
-        // 2. 获取每个组的项目和成员信息
+        // 2. 并发获取每个组的项目和成员信息（分批处理，防止限流）
+        const GROUP_CONCURRENCY = 3;
         const groupsWithProjects = [];
         
-        for (const group of allGroups) {
-            const groupData = {
-                id: group.id,
-                name: group.name,
-                full_path: group.full_path || group.name,
-                description: group.description || '',
-                projects: []
-            };
-            
-            try {
-                // 获取组内项目
-                const projectsResponse = await gitlabApi.get(`groups/${group.id}/projects?per_page=100`);
-                const projects = projectsResponse.data;
+        for (let i = 0; i < allGroups.length; i += GROUP_CONCURRENCY) {
+            const batch = allGroups.slice(i, i + GROUP_CONCURRENCY);
+            const batchResults = await Promise.all(batch.map(async (group) => {
+                const groupData = {
+                    id: group.id,
+                    name: group.name,
+                    full_path: group.full_path || group.name,
+                    description: group.description || '',
+                    projects: []
+                };
                 
-                // 获取每个项目的成员权限
-                for (const project of projects) {
-                    try {
-                        const membersResponse = await gitlabApi.get(`projects/${project.id}/members/all`);
-                        const members = membersResponse.data.map(member => ({
-                            username: member.username,
-                            access_level: member.access_level,
-                            expires_at: member.expires_at
+                try {
+                    // 获取组内项目
+                    const projectsResponse = await gitlabApi.get(`groups/${group.id}/projects?per_page=100`);
+                    const projects = projectsResponse.data;
+                    
+                    // 并发获取每个项目的成员权限（分批处理）
+                    const PROJECT_CONCURRENCY = 5;
+                    for (let j = 0; j < projects.length; j += PROJECT_CONCURRENCY) {
+                        const projectBatch = projects.slice(j, j + PROJECT_CONCURRENCY);
+                        const projectResults = await Promise.all(projectBatch.map(async (project) => {
+                            try {
+                                const membersResponse = await gitlabApi.get(`projects/${project.id}/members/all`);
+                                const members = membersResponse.data.map(member => ({
+                                    username: member.username,
+                                    access_level: member.access_level,
+                                    expires_at: member.expires_at
+                                }));
+                                
+                                return {
+                                    id: project.id,
+                                    name: project.name,
+                                    path_with_namespace: project.path_with_namespace,
+                                    description: project.description,
+                                    web_url: project.web_url,
+                                    members: members
+                                };
+                            } catch (memberError) {
+                                console.warn(`获取项目 ${project.id} 的成员失败:`, memberError.message);
+                                return {
+                                    id: project.id,
+                                    name: project.name,
+                                    path_with_namespace: project.path_with_namespace,
+                                    description: project.description,
+                                    web_url: project.web_url,
+                                    members: []
+                                };
+                            }
                         }));
                         
-                        groupData.projects.push({
-                            id: project.id,
-                            name: project.name,
-                            path_with_namespace: project.path_with_namespace,
-                            description: project.description,
-                            web_url: project.web_url,
-                            members: members
-                        });
-                    } catch (memberError) {
-                        console.warn(`获取项目 ${project.id} 的成员失败:`, memberError.message);
-                        groupData.projects.push({
-                            id: project.id,
-                            name: project.name,
-                            path_with_namespace: project.path_with_namespace,
-                            description: project.description,
-                            web_url: project.web_url,
-                            members: []
-                        });
+                        groupData.projects.push(...projectResults);
+                        
+                        // 项目批次间短暂延迟
+                        if (j + PROJECT_CONCURRENCY < projects.length) {
+                            await new Promise(r => setTimeout(r, 50));
+                        }
                     }
+                    
+                    console.log(`[调试] 组 '${group.name}': ${groupData.projects.length} 个项目`);
+                    
+                } catch (projectError) {
+                    console.warn(`获取组 ${group.id} 的项目失败:`, projectError.message);
                 }
                 
-                groupsWithProjects.push(groupData);
-                console.log(`[调试] 组 '${group.name}': ${groupData.projects.length} 个项目`);
-                
-            } catch (projectError) {
-                console.warn(`获取组 ${group.id} 的项目失败:`, projectError.message);
-                groupsWithProjects.push(groupData);
+                return groupData;
+            }));
+            
+            groupsWithProjects.push(...batchResults);
+            
+            // 组批次间短暂延迟
+            if (i + GROUP_CONCURRENCY < allGroups.length) {
+                await new Promise(r => setTimeout(r, 100));
             }
         }
         
